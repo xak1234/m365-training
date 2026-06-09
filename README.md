@@ -6,6 +6,8 @@ The M365 Training Center is a single-page application (SPA) written in **vanilla
 
 It's designed for aspiring M365 admins, IT students, and anyone who wants to practice administrative tasks without touching a production tenant.
 
+![M365 Training Center — the dashboard, showing the simulated Contoso Ltd tenant and the learning modules](docs/images/dashboard.png)
+
 ---
 
 ## Table of Contents
@@ -25,7 +27,6 @@ It's designed for aspiring M365 admins, IT students, and anyone who wants to pra
 - [Extending the App: Adding a New Module](#extending-the-app-adding-a-new-module)
 - [Data Model Reference](#data-model-reference)
 - [Browser Support](#browser-support)
-- [Repository Notes (prototypes)](#repository-notes-prototypes)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -87,15 +88,12 @@ m365-training/
 │   ├── module-users.js     # User Management module (lessons + simulation + quiz)
 │   ├── module-teams.js     # Microsoft Teams module
 │   └── module-sharepoint.js# SharePoint Online module
-├── archive/                # Earlier React/Babel prototypes (not used by the app)
-│   ├── launch-v5..v8.html  #   standalone single-file React prototypes
-│   └── m365-v3..v6.jsx     #   earlier React component sources
 ├── LICENSE
 ├── .gitignore
 └── README.md
 ```
 
-The **shipping app** is `index.html` + `css/styles.css` + the six files in `js/`. The files under `archive/` are earlier exploratory prototypes kept for reference — see [Repository Notes](#repository-notes-prototypes).
+The **shipping app** is `index.html` + `css/styles.css` + the six files in `js/`.
 
 ---
 
@@ -429,17 +427,6 @@ overallPct   = average(modulePct for every registered module)
 ## Browser Support
 
 Any modern evergreen browser (Chrome, Edge, Firefox, Safari). The app uses ES5-style vanilla JS, standard DOM APIs, `localStorage`, SVG, and `MutationObserver` — no transpilation needed. No Internet Explorer support is targeted.
-
----
-
-## Repository Notes (prototypes)
-
-The `archive/` folder contains earlier **prototype** files that are *not* part of the shipping app:
-
-- `launch-v5.html` … `launch-v8.html` — standalone, single-file React prototypes (React + ReactDOM + Babel loaded from a CDN, JSX compiled in-browser). These explore a full "admin center" simulation UI and were design/UX experiments.
-- `m365-v3.jsx` … `m365-v6.jsx` — earlier React component sources behind those prototypes.
-
-They're kept for history and reference. The maintained, dependency-free application is **`index.html` + `css/styles.css` + `js/*.js`** as described above. If you're contributing, target the vanilla-JS app unless a change explicitly concerns the prototypes.
 
 ---
 
