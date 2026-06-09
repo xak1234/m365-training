@@ -681,6 +681,33 @@ h4 { font-size: var(--font-size-md); }
   z-index: 1;
 }
 
+/* Keep all header content legible on the colored banner.
+   The markup uses .module-header-title (an h2), .module-header-desc,
+   .btn-back and .progress-label, so target those explicitly — otherwise
+   the global dark heading/text colors win over the inherited white. */
+.module-header .module-header-title,
+.module-header .module-header-desc,
+.module-header .btn-back,
+.module-header .progress-label {
+  color: #ffffff;
+  position: relative;
+  z-index: 1;
+}
+
+.module-header .module-header-desc,
+.module-header .progress-label {
+  opacity: 0.9;
+}
+
+.module-header .btn-back {
+  opacity: 0.95;
+}
+
+.module-header .btn-back:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
 .module-header--users {
   --module-color: var(--color-users);
   --module-color-dark: #005a9e;
