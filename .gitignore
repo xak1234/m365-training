@@ -1,0 +1,21 @@
+# OMC / local tooling state
+.omc/
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Logs
+*.log
+
+# Node (only if tooling is ever added; the app itself needs none)
+node_modules/
+npm-debug.log*
