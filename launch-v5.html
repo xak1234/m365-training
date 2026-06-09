@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M365 Admin Training Center v5</title>
+<style>html,body,#root{margin:0;padding:0;height:100%;width:100%;overflow:hidden}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef, useMemo } = React;
+
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const gid = () => "TKT-" + String(Math.floor(10000 + Math.random() * 90000));
+const ago = ms => { const m = Math.floor(ms / 60000); if (m < 1) return "now"; if (m < 60) return m + "m"; const h = Math.floor(m / 60); if (h < 24) return h + "h"; return Math.floor(h / 24) + "d"; };
+const pct = (a, b) => Math.min(100, Math.round(a / b * 100));
+const fD = d => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+const fT = d => new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+const TN = { name: "Contoso Corp", domain: "contoso.onmicrosoft.com", vanity: "contoso.com", id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890", region: "UK South", created: "2022-03-15" };
+
+// ═══════════════════════════════════════════════════════════════
+// USERS (16) — with AAD attributes
+// ═══════════════════════════════════════════════════════════════
+const U = [
+  {id:"u01",n:"Sarah Chen",e:"s.chen@contoso.com",dp:"Engineering",ti:"Senior Developer",lo:"Seattle",li:"E5",ac:true,mfa:true,mm:"Authenticator",ri:"None",ro:[],mb:50,mbU:18.2,tm:true,od:12.4,co:"Compliant",pw:"2026-02-01",av:"SC",src:"Cloud",sspr:true,pim:[],devs:["DESKTOP-SC01"],riskEv:0,lastMfa:"2026-03-10",gst:false},
+  {id:"u02",n:"Marcus Williams",e:"m.williams@contoso.com",dp:"Marketing",ti:"Marketing Director",lo:"New York",li:"E5",ac:true,mfa:true,mm:"SMS",ri:"None",ro:[],mb:50,mbU:32.7,tm:true,od:8.7,co:"Compliant",pw:"2026-01-15",av:"MW",src:"Synced",sspr:true,pim:[],devs:["LAPTOP-MW02"],riskEv:0,lastMfa:"2026-03-09",gst:false},
+  {id:"u03",n:"Emily Rodriguez",e:"e.rodriguez@contoso.com",dp:"Sales",ti:"Account Executive",lo:"New York",li:"E3",ac:true,mfa:false,mm:"None",ri:"Medium",ro:[],mb:50,mbU:41.3,tm:true,od:3.2,co:"NonCompliant",pw:"2025-11-20",av:"ER",src:"Synced",sspr:false,pim:[],devs:["LAPTOP-ER03"],riskEv:3,lastMfa:"Never",gst:false},
+  {id:"u04",n:"James O'Brien",e:"j.obrien@contoso.com",dp:"HR",ti:"HR Manager",lo:"London",li:"E3",ac:true,mfa:true,mm:"Authenticator",ri:"None",ro:["User Administrator"],mb:50,mbU:14.6,tm:true,od:5.1,co:"Compliant",pw:"2026-02-20",av:"JO",src:"Synced",sspr:true,pim:["User Administrator"],devs:["DESKTOP-JO04"],riskEv:0,lastMfa:"2026-03-10",gst:false},
+  {id:"u05",n:"Aisha Patel",e:"a.patel@contoso.com",dp:"Finance",ti:"CFO",lo:"London",li:"E5",ac:true,mfa:true,mm:"FIDO2 Key",ri:"None",ro:[],mb:100,mbU:48.1,tm:true,od:15.8,co:"Compliant",pw:"2026-03-01",av:"AP",src:"Cloud",sspr:true,pim:[],devs:["LAPTOP-AP05","IPHONE-AP05"],riskEv:0,lastMfa:"2026-03-10",gst:false},
+  {id:"u06",n:"David Kim",e:"d.kim@contoso.com",dp:"IT",ti:"IT Director",lo:"Seattle",li:"E5",ac:true,mfa:true,mm:"Authenticator+FIDO2",ri:"None",ro:["Global Administrator","Security Administrator","Exchange Administrator"],mb:100,mbU:22.3,tm:true,od:22.3,co:"Compliant",pw:"2026-03-05",av:"DK",src:"Cloud",sspr:true,pim:["Global Administrator","Security Administrator"],devs:["DESKTOP-DK06","LAPTOP-DK06B","IPHONE-DK06"],riskEv:0,lastMfa:"2026-03-10",gst:false},
+  {id:"u07",n:"Lisa Tanaka",e:"l.tanaka@contoso.com",dp:"Legal",ti:"General Counsel",lo:"Tokyo",li:"E5",ac:true,mfa:true,mm:"Authenticator",ri:"None",ro:["Compliance Administrator"],mb:100,mbU:36.4,tm:true,od:9.6,co:"Compliant",pw:"2026-02-10",av:"LT",src:"Cloud",sspr:true,pim:["Compliance Administrator"],devs:["LAPTOP-LT07"],riskEv:0,lastMfa:"2026-03-10",gst:false},
+  {id:"u08",n:"Tom Baker",e:"t.baker@contoso.com",dp:"Operations",ti:"Operations Lead",lo:"Sydney",li:"E3",ac:false,mfa:false,mm:"None",ri:"High",ro:[],mb:50,mbU:1.2,tm:false,od:1.2,co:"NonCompliant",pw:"2025-09-01",av:"TB",src:"Synced",sspr:false,pim:[],devs:[],riskEv:7,lastMfa:"Never",gst:false},
+  {id:"u09",n:"Rachel Foster",e:"r.foster@contoso.com",dp:"Marketing",ti:"Content Writer",lo:"Berlin",li:"F3",ac:true,mfa:false,mm:"None",ri:"Low",ro:[],mb:2,mbU:1.8,tm:true,od:0.4,co:"NonCompliant",pw:"2025-12-15",av:"RF",src:"Cloud",sspr:false,pim:[],devs:["BYOD-RF09"],riskEv:2,lastMfa:"Never",gst:false},
+  {id:"u10",n:"Carlos Mendez",e:"c.mendez@contoso.com",dp:"Engineering",ti:"DevOps Lead",lo:"Seattle",li:"E5",ac:true,mfa:true,mm:"Authenticator",ri:"None",ro:["Application Administrator"],mb:50,mbU:28.9,tm:true,od:18.9,co:"Compliant",pw:"2026-02-25",av:"CM",src:"Cloud",sspr:true,pim:["Application Administrator"],devs:["DESKTOP-CM10","LAPTOP-CM10B"],riskEv:0,lastMfa:"2026-03-10",gst:false},
+  {id:"u11",n:"Nina Volkov",e:"n.volkov@contoso.com",dp:"Sales",ti:"VP Sales",lo:"Berlin",li:"E5",ac:true,mfa:true,mm:"SMS",ri:"None",ro:[],mb:100,mbU:42.1,tm:true,od:7.3,co:"Compliant",pw:"2026-01-28",av:"NV",src:"Synced",sspr:true,pim:[],devs:["LAPTOP-NV11"],riskEv:0,lastMfa:"2026-03-09",gst:false},
+  {id:"u12",n:"Kevin Okafor",e:"k.okafor@contoso.com",dp:"Finance",ti:"Accounting Mgr",lo:"New York",li:"E3",ac:true,mfa:true,mm:"Authenticator",ri:"None",ro:[],mb:50,mbU:19.4,tm:true,od:4.5,co:"Compliant",pw:"2026-02-18",av:"KO",src:"Synced",sspr:true,pim:[],devs:["DESKTOP-KO12"],riskEv:0,lastMfa:"2026-03-10",gst:false},
+  {id:"u13",n:"Priya Sharma",e:"p.sharma@contoso.com",dp:"Engineering",ti:"QA Engineer",lo:"London",li:"E3",ac:true,mfa:true,mm:"Authenticator",ri:"None",ro:[],mb:50,mbU:8.3,tm:true,od:6.7,co:"Compliant",pw:"2026-03-02",av:"PS",src:"Synced",sspr:true,pim:[],devs:["LAPTOP-PS13"],riskEv:0,lastMfa:"2026-03-10",gst:false},
+  {id:"u14",n:"Alex Turner",e:"a.turner@contoso.com",dp:"IT",ti:"Helpdesk Analyst",lo:"London",li:"E3",ac:true,mfa:true,mm:"Authenticator",ri:"None",ro:["Helpdesk Administrator"],mb:50,mbU:5.1,tm:true,od:2.1,co:"Compliant",pw:"2026-03-04",av:"AT",src:"Cloud",sspr:true,pim:["Helpdesk Administrator"],devs:["DESKTOP-AT14"],riskEv:0,lastMfa:"2026-03-10",gst:false},
+  {id:"u15",n:"Maya Johansson",e:"m.johansson@contoso.com",dp:"HR",ti:"Recruiter",lo:"Berlin",li:"E3",ac:true,mfa:true,mm:"Authenticator",ri:"None",ro:[],mb:50,mbU:11.2,tm:true,od:3.8,co:"Compliant",pw:"2026-02-28",av:"MJ",src:"Synced",sspr:true,pim:[],devs:["LAPTOP-MJ15"],riskEv:0,lastMfa:"2026-03-10",gst:false},
+  {id:"u16",n:"Omar Hassan",e:"o.hassan@contoso.com",dp:"Operations",ti:"Logistics",lo:"London",li:"F3",ac:true,mfa:false,mm:"None",ri:"Low",ro:[],mb:2,mbU:1.9,tm:true,od:0.2,co:"NonCompliant",pw:"2025-10-10",av:"OH",src:"Synced",sspr:false,pim:[],devs:["SHARED-OH16"],riskEv:1,lastMfa:"Never",gst:false},
+];
+
+// GUEST / B2B USERS
+const GUESTS = [
+  {id:"g01",n:"Frank Miller",e:"f.miller@partner-corp.com",org:"Partner Corp",inv:"2026-01-10",lastLogin:"2026-03-08",state:"Accepted",access:["Sales Dashboard SP"],mfa:"Required via home tenant",redeemed:true},
+  {id:"g02",n:"Sarah Klein",e:"s.klein@lawfirm.co.uk",org:"Klein & Associates",inv:"2025-11-20",lastLogin:"2026-03-05",state:"Accepted",access:["Legal Vault SP"],mfa:"Required via home tenant",redeemed:true},
+  {id:"g03",n:"Raj Gupta",e:"r.gupta@vendor-solutions.in",org:"Vendor Solutions",inv:"2026-02-28",lastLogin:"Never",state:"PendingAcceptance",access:["Engineering Hub SP"],mfa:"N/A",redeemed:false},
+  {id:"g04",n:"Chen Wei",e:"c.wei@audit-firm.cn",org:"Global Audit Partners",inv:"2026-03-01",lastLogin:"2026-03-09",state:"Accepted",access:["Finance Reports SP"],mfa:"Required via home tenant",redeemed:true},
+  {id:"g05",n:"Maria Santos",e:"m.santos@agency.br",org:"Creative Agency BR",inv:"2026-02-15",lastLogin:"2026-03-02",state:"Accepted",access:["Marketing Portal SP"],mfa:"Not enforced ⚠",redeemed:true},
+];
+
+// ═══════════════════════════════════════════════════════════════
+// AAD / ENTRA CONNECT DATA
+// ═══════════════════════════════════════════════════════════════
+const AAD_CONNECT = {
+  version:"2.3.20.0",server:"AADC-SVR01.contoso.local",status:"Running",lastSync:"2026-03-10T09:12:00Z",lastSyncType:"Delta",nextSync:"2026-03-10T09:42:00Z",
+  syncInterval:30,staging:false,pwSync:true,pwWriteback:true,seamlessSso:true,ptAuth:false,
+  connectors:[
+    {name:"contoso.local",type:"Active Directory",status:"Connected",objects:{users:847,groups:124,contacts:23},lastRun:"2026-03-10T09:12:00Z",errors:2,warnings:5},
+    {name:"contoso.onmicrosoft.com",type:"Azure AD",status:"Connected",objects:{users:847,groups:124,contacts:23},lastRun:"2026-03-10T09:12:00Z",errors:0,warnings:1},
+  ],
+  syncErrors:[
+    {obj:"cn=SVC-Legacy01,OU=Service,DC=contoso,DC=local",type:"Export",err:"InvalidSoftMatch",desc:"Unable to match object by SourceAnchor or ProxyAddress. Duplicate proxyAddress detected.",time:"2026-03-10T09:12Z",sev:"Error"},
+    {obj:"cn=Room-OldConf,OU=Resources,DC=contoso,DC=local",type:"Export",err:"AttributeValueMustBeUnique",desc:"Value 'oldconf@contoso.com' of attribute proxyAddresses conflicts with another object.",time:"2026-03-10T09:12Z",sev:"Error"},
+    {obj:"cn=J.Smith-Temp,OU=Users,DC=contoso,DC=local",type:"Export",err:"DataValidationFailed",desc:"The value of UserPrincipalName contains invalid characters.",time:"2026-03-09T21:42Z",sev:"Warning"},
+  ],
+  health:{lastChecked:"2026-03-10T09:15Z",alerts:1,alertDetails:"Password writeback service healthy. 2 export errors detected."}
+};
+
+// SSPR
+const SSPR = {
+  enabled:"Selected groups",groups:["All-Licensed-Users"],methods:2,methodsAvail:["Authenticator App","Email","Phone","Security Questions"],
+  registration:{total:U.filter(u=>u.ac).length,registered:U.filter(u=>u.sspr).length,capable:U.filter(u=>u.sspr&&u.mfa).length},
+  lockout:{threshold:10,duration:60,smartLockout:true},
+  banPw:{enabled:true,custom:["Contoso","contoso123","Password1","Welcome1","Summer2026"]},
+  activity:[{u:"u12",action:"Reset password via SSPR",time:"2026-03-10T08:45Z",method:"Authenticator"},{u:"u02",action:"Changed password via SSPR",time:"2026-03-09T16:20Z",method:"Email"},{u:"u13",action:"Reset password via SSPR",time:"2026-03-09T11:00Z",method:"Phone"}]
+};
+
+// AUTH METHODS POLICY
+const AUTH_METHODS = [
+  {method:"Microsoft Authenticator",status:"Enabled",target:"All users",push:true,passwordless:true,numMatch:true,regPct:68},
+  {method:"FIDO2 Security Keys",status:"Enabled",target:"Admins only",push:false,passwordless:true,numMatch:false,regPct:12},
+  {method:"SMS",status:"Enabled",target:"All users (fallback)",push:false,passwordless:false,numMatch:false,regPct:45},
+  {method:"Email OTP",status:"Enabled",target:"Guests only",push:false,passwordless:false,numMatch:false,regPct:0},
+  {method:"Temporary Access Pass",status:"Enabled",target:"Admins can issue",push:false,passwordless:true,numMatch:false,regPct:0},
+  {method:"Certificate-Based Auth",status:"Disabled",target:"N/A",push:false,passwordless:false,numMatch:false,regPct:0},
+  {method:"Voice Call",status:"Disabled",target:"N/A",push:false,passwordless:false,numMatch:false,regPct:0},
+];
+
+// NAMED LOCATIONS
+const NAMED_LOCS = [
+  {name:"Corporate Office - Seattle",type:"IP Range",ranges:["10.0.0.0/8","172.16.0.0/12"],trusted:true,mfaSkip:true},
+  {name:"Corporate Office - London",type:"IP Range",ranges:["192.168.1.0/24","203.0.113.0/24"],trusted:true,mfaSkip:true},
+  {name:"Corporate VPN",type:"IP Range",ranges:["198.51.100.0/24"],trusted:true,mfaSkip:false},
+  {name:"Blocked Countries",type:"Countries",countries:["Russia","North Korea","Iran"],trusted:false,mfaSkip:false},
+  {name:"Berlin Office",type:"IP Range",ranges:["85.120.45.0/24"],trusted:true,mfaSkip:true},
+  {name:"Tokyo Office",type:"IP Range",ranges:["103.5.140.0/24"],trusted:true,mfaSkip:false},
+];
+
+// PIM (Privileged Identity Management)
+const PIM_ROLES = [
+  {role:"Global Administrator",eligible:["u06"],active:[],maxDuration:"1h",reqApproval:true,approver:"u05",reqMfa:true,reqJustification:true},
+  {role:"Security Administrator",eligible:["u06","u14"],active:["u06"],maxDuration:"4h",reqApproval:false,approver:null,reqMfa:true,reqJustification:true},
+  {role:"Exchange Administrator",eligible:["u06","u14"],active:[],maxDuration:"8h",reqApproval:false,approver:null,reqMfa:true,reqJustification:true},
+  {role:"User Administrator",eligible:["u04","u14"],active:["u04"],maxDuration:"8h",reqApproval:false,approver:null,reqMfa:true,reqJustification:false},
+  {role:"Application Administrator",eligible:["u10"],active:[],maxDuration:"4h",reqApproval:false,approver:null,reqMfa:true,reqJustification:true},
+  {role:"Compliance Administrator",eligible:["u07"],active:["u07"],maxDuration:"8h",reqApproval:false,approver:null,reqMfa:true,reqJustification:false},
+  {role:"Helpdesk Administrator",eligible:["u14"],active:["u14"],maxDuration:"8h",reqApproval:false,approver:null,reqMfa:false,reqJustification:false},
+];
+
+const PIM_LOG = [
+  {user:"u06",role:"Global Administrator",action:"Activated",time:"2026-03-10T04:10Z",justification:"Emergency CA policy update",duration:"1h",status:"Expired"},
+  {user:"u04",role:"User Administrator",action:"Activated",time:"2026-03-10T07:00Z",justification:"New hire onboarding batch",duration:"8h",status:"Active"},
+  {user:"u07",role:"Compliance Administrator",action:"Activated",time:"2026-03-10T08:00Z",justification:"eDiscovery case review",duration:"8h",status:"Active"},
+  {user:"u14",role:"Helpdesk Administrator",action:"Activated",time:"2026-03-10T06:30Z",justification:"Shift start",duration:"8h",status:"Active"},
+  {user:"u06",role:"Security Administrator",action:"Activated",time:"2026-03-10T04:12Z",justification:"Incident investigation",duration:"4h",status:"Active"},
+];
+
+// RISK DETECTIONS
+const RISK_DET = [
+  {id:"rd1",user:"u08",type:"Impossible travel",level:"High",time:"2026-03-10T03:50Z",detail:"Sign-in from Sydney (AU) then 45.67.89.12 (RU) within 8 min",status:"AtRisk",remediated:false},
+  {id:"rd2",user:"u03",type:"Password spray",level:"High",time:"2026-03-10T09:10Z",detail:"47 failed attempts from 12 IPs matching known spray pattern",status:"AtRisk",remediated:false},
+  {id:"rd3",user:"u09",type:"Anomalous token",level:"Medium",time:"2026-03-08T18:50Z",detail:"Token used from unfamiliar device/location after OAuth consent",status:"AtRisk",remediated:false},
+  {id:"rd4",user:"u16",type:"Credential harvesting",level:"High",time:"2026-03-10T08:45Z",detail:"User visited known credential harvesting page (MS login spoof)",status:"AtRisk",remediated:false},
+  {id:"rd5",user:"u08",type:"Malicious IP",level:"Medium",time:"2026-03-09T11:00Z",detail:"Sign-in from IP on Microsoft threat intelligence feed",status:"AtRisk",remediated:false},
+  {id:"rd6",user:"u05",type:"Unfamiliar sign-in properties",level:"Low",time:"2026-03-09T16:00Z",detail:"Sign-in from new device class at unusual time",status:"Dismissed",remediated:true},
+];
+
+// ACCESS REVIEWS
+const ACCESS_REVIEWS = [
+  {name:"Global Admin quarterly review",scope:"Global Administrator role",status:"InProgress",due:"2026-03-31",reviewer:"u05",reviewed:0,total:1,autoAction:"Remove access"},
+  {name:"Guest user access review",scope:"All guest users",status:"InProgress",due:"2026-04-15",reviewer:"u06",reviewed:2,total:5,autoAction:"Remove access"},
+  {name:"Finance SP site access",scope:"Finance Reports site members",status:"Completed",due:"2026-02-28",reviewer:"u05",reviewed:4,total:4,autoAction:"No change"},
+  {name:"Application consent review",scope:"Apps with user consent",status:"NotStarted",due:"2026-04-30",reviewer:"u06",reviewed:0,total:3,autoAction:"Revoke consent"},
+];
+
+// APP REGISTRATIONS
+const APP_REGS = [
+  {name:"Contoso Internal API",appId:"app-001",type:"Web",secrets:2,secretExpiry:"2026-06-15",certs:0,owners:["u10"],permissions:["User.Read","Files.Read"],permType:"Delegated",status:"Healthy"},
+  {name:"Contoso Mobile App",appId:"app-002",type:"SPA",secrets:1,secretExpiry:"2026-04-01",certs:0,owners:["u01"],permissions:["User.Read","offline_access"],permType:"Delegated",status:"⚠ Secret expiring soon"},
+  {name:"Reporting Daemon",appId:"app-003",type:"Daemon",secrets:1,secretExpiry:"2026-12-01",certs:1,owners:["u10"],permissions:["Reports.Read.All","AuditLog.Read.All"],permType:"Application",status:"Healthy"},
+  {name:"HR Integration",appId:"app-004",type:"Web",secrets:1,secretExpiry:"2025-12-31",certs:0,owners:["u04"],permissions:["User.ReadWrite.All","Group.ReadWrite.All"],permType:"Application",status:"🔴 Secret EXPIRED"},
+  {name:"Legacy Sync Tool",appId:"app-005",type:"Daemon",secrets:0,secretExpiry:"N/A",certs:1,owners:[],permissions:["Directory.ReadWrite.All"],permType:"Application",status:"⚠ No owner assigned"},
+];
+
+// AUDIT LOG
+const AUDIT_LOG = [
+  {time:"2026-03-10T09:15Z",actor:"u06",activity:"Update conditional access policy",target:"Block High-Risk Sign-ins",result:"Success",cat:"Policy"},
+  {time:"2026-03-10T09:12Z",actor:"System",activity:"Entra Connect sync completed",target:"Delta sync (847 objects)",result:"Success (2 errors)",cat:"DirectorySync"},
+  {time:"2026-03-10T08:45Z",actor:"u04",activity:"Add member to group",target:"HR-All → m.johansson@contoso.com",result:"Success",cat:"GroupManagement"},
+  {time:"2026-03-10T08:30Z",actor:"u06",activity:"Reset user password",target:"o.hassan@contoso.com",result:"Success",cat:"UserManagement"},
+  {time:"2026-03-10T07:00Z",actor:"u04",activity:"Activate PIM role",target:"User Administrator (8h)",result:"Success",cat:"RoleManagement"},
+  {time:"2026-03-10T04:12Z",actor:"u06",activity:"Activate PIM role",target:"Security Administrator (4h)",result:"Success",cat:"RoleManagement"},
+  {time:"2026-03-10T04:10Z",actor:"u06",activity:"Activate PIM role",target:"Global Administrator (1h)",result:"Success",cat:"RoleManagement"},
+  {time:"2026-03-09T22:00Z",actor:"System",activity:"Risk detection: Password spray",target:"e.rodriguez@contoso.com",result:"Alert generated",cat:"IdentityProtection"},
+  {time:"2026-03-09T18:50Z",actor:"u09",activity:"Consent to application",target:"DataSync Pro (Mail.ReadWrite)",result:"Success",cat:"ApplicationManagement"},
+  {time:"2026-03-09T16:20Z",actor:"u02",activity:"Self-service password change",target:"m.williams@contoso.com",result:"Success",cat:"SelfService"},
+];
+
+// ═══════════════════════════════════════════════════════════════
+// OTHER SERVICES DATA (compact)
+// ═══════════════════════════════════════════════════════════════
+const SVC_HEALTH = [
+  {s:"Exchange Online",i:"📧",st:"Operational",inc:0,adv:1},{s:"SharePoint Online",i:"📄",st:"Operational",inc:0,adv:0},
+  {s:"Microsoft Teams",i:"💬",st:"Degraded",inc:1,adv:0},{s:"Entra ID / AAD",i:"🔐",st:"Operational",inc:0,adv:0},
+  {s:"OneDrive",i:"☁️",st:"Operational",inc:0,adv:1},{s:"Intune",i:"📱",st:"Operational",inc:0,adv:0},
+  {s:"Defender",i:"🛡️",st:"Operational",inc:0,adv:0},{s:"Power Platform",i:"⚡",st:"Operational",inc:0,adv:0},
+  {s:"Purview",i:"🔏",st:"Operational",inc:0,adv:1},{s:"Outlook Mobile",i:"📨",st:"Operational",inc:0,adv:0},
+  {s:"Entra Connect",i:"🔗",st:AAD_CONNECT.syncErrors.filter(e=>e.sev==="Error").length>0?"Warning":"Operational",inc:0,adv:AAD_CONNECT.syncErrors.filter(e=>e.sev==="Error").length},
+];
+
+const SHARED_MBX = [{n:"info@contoso.com",mem:3,sz:4.2},{n:"support@contoso.com",mem:3,sz:12.8},{n:"hr@contoso.com",mem:2,sz:8.1},{n:"billing@contoso.com",mem:2,sz:15.3},{n:"legal@contoso.com",mem:1,sz:22.7}];
+const ROOMS = [{n:"London Board Room",loc:"London F12",cap:20},{n:"Seattle Huddle A",loc:"Seattle F3",cap:6},{n:"NY Conference 1",loc:"New York F8",cap:12},{n:"Berlin Focus",loc:"Berlin F2",cap:4}];
+const SP_D = [{n:"Engineering Hub",sz:8.2,qt:25},{n:"Marketing Portal",sz:4.1,qt:25},{n:"HR Intranet",sz:2.3,qt:25},{n:"Finance Reports",sz:18.7,qt:25},{n:"Sales Dashboard",sz:6.9,qt:25},{n:"Company Intranet",sz:11.4,qt:50},{n:"Legal Vault",sz:24.1,qt:25}];
+const TEAMS_D = [{n:"Engineering",ch:4,mem:4,prv:1},{n:"Marketing",ch:4,mem:2,prv:0},{n:"Sales",ch:4,mem:2,prv:1},{n:"All Company",ch:4,mem:14,prv:0},{n:"IT Helpdesk",ch:3,mem:2,prv:0},{n:"Leadership",ch:3,mem:5,prv:1},{n:"Finance",ch:3,mem:2,prv:1},{n:"HR",ch:3,mem:2,prv:0}];
+const CA_D = [{n:"Require MFA - Admins",st:"On",c:"Admin roles",g:"Require MFA"},{n:"Block Legacy Auth",st:"On",c:"All users, legacy clients",g:"Block"},{n:"Require Compliant Device",st:"On",c:"All users, cloud apps",g:"Compliant OR MFA"},{n:"Block High-Risk Sign-ins",st:"On",c:"High risk",g:"Block"},{n:"MFA External Networks",st:"Report-only",c:"Outside trusted IPs",g:"Require MFA"},{n:"Block Countries",st:"On",c:"RU, KP, IR, CN",g:"Block"},{n:"Session Timeout Sensitive",st:"On",c:"SP, Exchange",g:"4h frequency"},{n:"Guest MFA Required",st:"On",c:"Guest users, all apps",g:"Require MFA"}];
+const DLP_D = [{n:"Credit Card Detection",st:"Enforcing",ma:12},{n:"PII/SSN Protection",st:"Enforcing",ma:3},{n:"Financial Data",st:"Enforcing",ma:28},{n:"Source Code Leak",st:"Enforcing",ma:5},{n:"GDPR Personal Data",st:"Enforcing",ma:19}];
+const LICS = [{n:"Microsoft 365 E5",t:25,u:8,c:"$57"},{n:"Microsoft 365 E3",t:40,u:7,c:"$36"},{n:"Microsoft 365 F3",t:20,u:2,c:"$8"},{n:"Entra ID P2",t:25,u:16,c:"$9"},{n:"Teams Phone",t:10,u:6,c:"$8"},{n:"Defender P2",t:25,u:15,c:"$5.20"},{n:"Power BI Pro",t:10,u:4,c:"$10"},{n:"Intune Plan 1",t:50,u:16,c:"$8"}];
+
+// ═══════════════════════════════════════════════════════════════
+// TICKETS (60+ templates with AAD-specific)
+// ═══════════════════════════════════════════════════════════════
+const LOCS2 = ["Moscow","Lagos","Pyongyang","Unknown (Tor)","São Paulo","Mumbai"];
+const NN = ["Lucas Fischer","Jade Wong","Dmitri Volkov","Isabella Costa","Hiroshi Yamamoto","Elena Petrov","Fatima Al-Rashid","Samuel Adeyemi"];
+const TPL = [
+  // AAD / ENTRA ID (expanded)
+  {c:"AAD/Entra",p:"Critical",t:"{u} locked out — AADSTS50053",d:"{u} gets 'AADSTS50053: Account locked'. 23 failed attempts from multiple IPs. Identity verified via manager.",h:"Check sign-in logs for brute-force indicators. Unblock in Entra ID, force password reset, verify MFA, check if IP in named locations.",s:["Review sign-in logs for attack pattern","Check IP against named locations","Unblock account in Entra ID","Force password reset","Issue Temporary Access Pass","Verify MFA registration","Monitor sign-ins for 24h"],sl:30},
+  {c:"AAD/Entra",p:"High",t:"Entra Connect sync errors — 2 export failures",d:"Entra Connect Health dashboard shows 2 export errors on last delta sync. Objects not syncing to AAD: SVC-Legacy01 and Room-OldConf.",h:"Check Synchronization Service Manager. Export errors typically caused by duplicate proxyAddress, invalid UPN, or SourceAnchor mismatch.",s:["RDP to AADC-SVR01 server","Open Sync Service Manager","Review export error details","Fix duplicate proxyAddress in on-prem AD","Fix invalid characters in UPN","Run Start-ADSyncSyncCycle -PolicyType Delta","Verify objects sync successfully"],sl:120},
+  {c:"AAD/Entra",p:"High",t:"App registration secret expired: HR Integration",d:"HR Integration app (app-004) secret expired 2025-12-31. HR provisioning workflow broken. New hires not syncing from HR system.",h:"Generate new client secret, update in HR system config, test integration. Consider certificate auth instead.",s:["Open Entra ID → App Registrations","Find HR Integration app","Generate new client secret (24-month)","Securely share with HR system owner","Update credentials in HR system","Test integration flow","Set calendar reminder for next rotation"],sl:120},
+  {c:"AAD/Entra",p:"High",t:"Onboard new hire: {nn} in {dp}",d:"New employee starting Monday in {dp}. Create cloud account, assign license, add to groups, verify mailbox + Teams + OneDrive provisioned.",h:"Full onboarding: create user, set attributes, assign license via group, verify provisioning cascade.",s:["Create user in Entra ID","Set department, manager, job title","Add to dept security group (license auto-assigns)","Verify mailbox provisioned","Verify Teams enabled","Verify OneDrive provisioned","Send welcome credentials via Temp Access Pass"],sl:120},
+  {c:"AAD/Entra",p:"High",t:"Offboard: {u} — immediate termination",d:"{u} terminated effective now. Block all access, preserve data per retention policy, convert mailbox to shared.",h:"Block sign-in, revoke tokens (revoke-MgUserSignInSession), reset pw, convert mailbox, transfer OD, litigation hold if flagged.",s:["Block sign-in in Entra ID","Revoke all refresh tokens","Reset password","Convert mailbox to shared","Set mail forwarding to manager","Transfer OneDrive to manager","Remove from all groups","Remove license assignments","Check if litigation hold needed"],sl:120},
+  {c:"AAD/Entra",p:"Medium",t:"{u} MFA reset — new device",d:"{u} replaced phone. AADSTS50076 loop. Identity verified with passport + manager verbal confirmation.",h:"Delete existing auth methods, issue TAP, user re-registers. Consider FIDO2 as backup method.",s:["Open Entra ID → User → Auth methods","Delete all registered methods","Generate Temporary Access Pass (1h, single-use)","Communicate TAP securely (not email)","User signs in and re-registers MFA","Verify new method works","Recommend backup method"],sl:480},
+  {c:"AAD/Entra",p:"High",t:"CA policy blocking {u} working remotely",d:"{u} gets AADSTS53003 from home. Personal Windows laptop, not Intune enrolled. Needs access urgently for client deadline.",h:"Check sign-in logs → CA tab. Identify which policy blocked. Options: enroll device, add IP exception, or temporary exclusion.",s:["Review sign-in log CA evaluation","Identify blocking policy (likely 'Require Compliant Device')","Check user's device enrollment status","Guide user through Intune enrollment","Or: add temp named location for user's IP","Verify access restored","Remove temp exception after device enrolled"],sl:120},
+  {c:"AAD/Entra",p:"Medium",t:"PIM activation failing for {u}",d:"{u} trying to activate {role} via PIM. Gets 'Authorization failed' error. Role shows as eligible but activation button greyed out.",h:"Check PIM role settings: approval required? MFA check failing? Justification missing? Eligible assignment expired?",s:["Check PIM role assignment status","Verify eligible assignment not expired","Check if approval required (and who's approver)","Verify user MFA is current","Check role activation max duration","Fix blocking condition","Test activation"],sl:480},
+  {c:"AAD/Entra",p:"Medium",t:"Guest user {gn} invitation stuck pending",d:"External contractor {gn} from {gorg} invited 2 weeks ago. Status still 'PendingAcceptance'. Needs SP site access for project.",h:"Resend invitation, check recipient's email, verify B2B settings allow domain, check tenant restrictions.",s:["Check guest user status in Entra ID","Verify external collaboration settings allow domain","Resend invitation email","Check recipient's spam/junk folder","Try alternative email if available","Verify guest can access after acceptance"],sl:480},
+  {c:"AAD/Entra",p:"High",t:"SSPR failing for {dp} users — 'not registered'",d:"Multiple {dp} users report SSPR shows 'You cannot use this feature because your admin has not set it up'. SSPR should be enabled.",h:"Check SSPR is enabled for user's group. Verify user has registered required auth methods. Check SSPR policy target groups.",s:["Check SSPR policy in Entra ID","Verify target group includes users","Check user's registered auth methods","Verify minimum methods requirement met","If not registered, guide through registration","Test SSPR flow"],sl:120},
+  {c:"AAD/Entra",p:"Low",t:"{u} license change E5 → E3",d:"Manager approved downgrade. Audit E5-only features before changing.",h:"Check: Phone System, Power BI Pro, eDiscovery, auto-archive, Defender P2 features.",s:["Audit E5 feature usage","Document features being removed","Remove E5 license","Assign E3 license","Verify all services functioning","Notify user of changes"],sl:1440},
+  {c:"AAD/Entra",p:"High",t:"Risk detection: {u} flagged High risk",d:"Identity Protection flagged {u} as High risk user. Multiple risk detections: password spray + malicious IP sign-in.",h:"Remediate: force password reset + MFA re-registration. Investigate: check for persistence (forwarding rules, OAuth apps).",s:["Review all risk detections for user","Block sign-in temporarily","Reset password","Revoke all sessions","Check mailbox forwarding rules","Review consented OAuth apps","Re-register MFA","Confirm risk as remediated","Unblock sign-in"],sl:120},
+  {c:"AAD/Entra",p:"Medium",t:"Access review overdue: Guest users",d:"Guest user access review due 2026-04-15 but only 2 of 5 guests reviewed. Auto-removal will trigger if not completed.",h:"Complete the review before deadline. Check each guest's last login, access scope, and business justification.",s:["Open access review in Entra ID","Review each pending guest user","Check last sign-in date","Verify business justification still valid","Approve or deny each guest","Complete review before deadline"],sl:480},
+  {c:"AAD/Entra",p:"High",t:"Suspicious app consent: DataSync Pro",d:"Entra ID detected high-privilege app consent by {u}. DataSync Pro (unverified publisher) granted Mail.ReadWrite + Files.ReadWrite.All.",h:"Revoke consent, block app tenant-wide, investigate data access, check for exfiltration indicators.",s:["Review app permissions in Entra ID","Check app publisher verification status","Revoke user consent immediately","Block app tenant-wide via Enterprise Apps","Review user's recent mail/file activity","Check audit logs for data access","Notify user and schedule training"],sl:120},
+  // TEAMS
+  {c:"Teams",p:"High",t:"{u} error CAA20002 joining meetings",d:"{u} gets CAA20002 on desktop and browser. Cleared cache, didn't help.",h:"Check license, CA policy blocking, token cache, re-assign license.",s:["Verify Teams license","Check CA sign-in logs","Clear token cache","Re-assign license","Test meeting join"],sl:120},
+  {c:"Teams",p:"High",t:"{u} Teams calls dropping after 30s",d:"All calls disconnect after ~30s. Chat works. Started today.",h:"UDP 3478-3481, VPN split-tunnel, firewall, media relay.",s:["Check network trace","Verify UDP ports open","Check VPN config","Review call quality dashboard","Test different network"],sl:120},
+  {c:"Teams",p:"Medium",t:"Teams Room offline: {room}",d:"Teams Room in {room} shows offline in TAC. Can't start meetings from room.",h:"Network, device restart, license, re-provisioning.",s:["Check device in TAC","Verify network","Remote restart","Check room license","Test meeting"],sl:480},
+  // SHAREPOINT
+  {c:"SharePoint",p:"High",t:"{u} Access Denied on {sp}",d:"{u} gets 403 on {sp}. Project deadline tomorrow.",h:"Check site permissions, add to Members/Visitors.",s:["Check SP permissions","Verify group membership","Add to group","Clear cache","Test"],sl:120},
+  {c:"SharePoint",p:"Critical",t:"{sp} storage quota exceeded",d:"{sp} at limit. Users can't upload.",h:"Increase quota, clean versions/recycle bin.",s:["Review storage","Clean recycle bin","Reduce versions","Increase quota","Verify"],sl:30},
+  // EXCHANGE
+  {c:"Exchange",p:"High",t:"{u} can't access shared mailbox",d:"{u} reports shared mailbox not showing in Outlook.",h:"Grant Full Access + Send As. ~60min propagation.",s:["Open EAC","Grant Full Access","Grant Send As","Wait propagation","Verify"],sl:120},
+  {c:"Exchange",p:"Critical",t:"{u} mailbox full — NDRs bouncing",d:"{u} at 50/50GB. Sending and receiving bouncing.",h:"Enable archive, increase quota, retention policy.",s:["Enable Online Archive","Set archive policy","Increase quota","Help cleanup","Verify"],sl:30},
+  {c:"Exchange",p:"High",t:"Meeting room {room} double-booking",d:"{room} accepted overlapping bookings.",h:"Check AutomateProcessing, AllowConflicts setting.",s:["Check resource properties","Verify AutoAccept","Set AllowConflicts=$false","Fix duplicate booking","Test"],sl:120},
+  // SECURITY
+  {c:"Security",p:"Critical",t:"Suspicious sign-in: {u} from {loc}",d:"High-risk sign-in from {loc}. User confirms they're in their normal location.",h:"Assume compromised. Block, revoke, investigate persistence.",s:["Block sign-in","Revoke sessions","Review sign-in history","Check forwarding rules","Check inbox rules","Review OAuth apps","Reset password","Re-register MFA","Unblock"],sl:30},
+  {c:"Security",p:"High",t:"Phishing reported by {u}",d:"Email impersonating CEO requesting wire transfer. Sender: ceo-contoso@protonmail.com",h:"Threat Explorer, quarantine matches, check clicks, alert org.",s:["Review in Threat Explorer","Check headers/URLs","Search for similar emails","Quarantine matches","Check user clicks","Review sign-in logs","Send org-wide alert"],sl:120},
+  {c:"Security",p:"Critical",t:"Ransomware indicators on {u} OneDrive",d:"Defender detected mass encryption: 847 files renamed to .locked in 4 minutes.",h:"Isolate device, revoke access, restore from version history.",s:["Block sign-in","Isolate device via Intune","Revoke sessions","OneDrive file restore","Defender full scan","Check lateral movement","Restore access after clean"],sl:30},
+  // OUTLOOK
+  {c:"Outlook",p:"High",t:"{u} Outlook crash 0xc0000005",d:"Outlook crashes on launch. Safe mode also crashes.",h:"Repair Office, new profile, disable COM add-ins.",s:["Try /safe mode","Disable add-ins","Run Office repair","Create new profile","Test launch"],sl:120},
+  {c:"Outlook",p:"Medium",t:"{u} OOO not sending to external",d:"Internal OOO works, external doesn't receive.",h:"Check remote domain AllowedOOFType, transport rules.",s:["Check OOF via PowerShell","Verify remote domain settings","Check transport rules","Test external"],sl:480},
+  // INTUNE
+  {c:"Intune",p:"High",t:"{u} device non-compliant — blocking access",d:"CA blocking all M365 access due to non-compliant device.",h:"Check compliance violations: BitLocker, OS, antivirus.",s:["Check compliance in Intune","Identify violations","Guide remediation","Force sync","Verify compliance","Confirm access"],sl:120},
+  // POWER PLATFORM
+  {c:"Power Platform",p:"High",t:"Power Automate flow failing: Invoice Approval",d:"InvalidConnection error. 23 invoices stuck.",h:"OAuth token expired. Re-authenticate connection.",s:["Check failed flow","Re-authorize connections","Resubmit failed runs","Monitor 1h","Verify processed"],sl:120},
+  // PURVIEW
+  {c:"Purview",p:"High",t:"eDiscovery hold needed for {u}",d:"Legal requires litigation hold on {u}'s mailbox + OneDrive. Active proceeding.",h:"Create case, add custodian, place hold.",s:["Create eDiscovery case","Add custodian","Hold mailbox","Hold OneDrive","Verify hold status","Notify legal"],sl:120},
+  {c:"Purview",p:"Medium",t:"Retention policy deleting files early on {sp}",d:"Files auto-deleted after 1 year instead of 3. {dp} lost reports.",h:"Fix retention period, restore from recycle bin.",s:["Review retention policy","Fix period to 3 years","Restore deleted files","Verify change","Monitor"],sl:480},
+];
+
+function mkT() {
+  const t = pick(TPL); const u = pick(U.filter(x => x.ac)); const g = pick(GUESTS);
+  const r = { "{u}": u.n, "{dp}": u.dp, "{loc}": pick(LOCS2), "{nn}": pick(NN), "{sp}": pick(SP_D).n, "{room}": pick(ROOMS).n, "{role}": pick(PIM_ROLES).role, "{gn}": g.n, "{gorg}": g.org };
+  let ti = t.t, de = t.d; for (const [k, v] of Object.entries(r)) { ti = ti.replaceAll(k, v); de = de.replaceAll(k, v); }
+  return { id: gid(), ti, de, c: t.c, p: t.p, h: t.h, st: t.s, rp: u.n, re: u.e, status: "Open", cr: Date.now(), sla: t.sl, notes: [], breach: false };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COLORS
+// ═══════════════════════════════════════════════════════════════
+const X = { bg:"#090b11",p:"#0f1219",p2:"#141822",pb:"#1c2233",ph:"#171d2b",a:"#3b82f6",ok:"#10b981",wn:"#f59e0b",er:"#ef4444",cr:"#dc2626",t1:"#e2e8f0",t2:"#94a3b8",t3:"#64748b",t4:"#475569",Teams:"#7c3aed",SharePoint:"#0ea5e9",Exchange:"#f97316","AAD/Entra":"#8b5cf6",OneDrive:"#06b6d4",Security:"#ef4444",Outlook:"#2563eb",Intune:"#10b981","Power Platform":"#f59e0b",Purview:"#6366f1" };
+const pC = p => ({ Critical: X.cr, High: X.er, Medium: X.wn, Low: X.ok }[p] || X.t3);
+const cC = c => X[c] || X.a;
+const cI = c => ({ Teams:"💬",SharePoint:"📄",Exchange:"📧","AAD/Entra":"🔐",OneDrive:"☁️",Security:"🛡️",Outlook:"📨",Intune:"📱","Power Platform":"⚡",Purview:"🔏" }[c] || "📋");
+
+// ═══════════════════════════════════════════════════════════════
+// APP
+// ═══════════════════════════════════════════════════════════════
+function App() {
+  const [tk, setTk] = useState([]); const [cl, setCl] = useState([]); const [sel, setSel] = useState(null);
+  const [pg, setPg] = useState("dash"); const [at, setAt] = useState("aad"); const [et, setEt] = useState("overview");
+  const [tf, setTf] = useState("all"); const [dn, setDn] = useState({}); const [nt, setNt] = useState("");
+  const [lg, setLg] = useState([]); const [ts, setTs] = useState(null);
+  const [sc, setSc] = useState({ r: 0, ok: 0, bad: 0, pt: 0 });
+  const [sp, setSp] = useState(1); const [pa, setPa] = useState(false);
+  const tr = useRef(tk); tr.current = tk;
+
+  const nfy = useCallback((m, t = "i") => { setTs({ m, t, k: Date.now() }); setTimeout(() => setTs(null), 3500); }, []);
+  const aL = m => setLg(p => [{ m, t: Date.now() }, ...p].slice(0, 60));
+
+  useEffect(() => { const i = []; for (let j = 0; j < 5; j++) i.push(mkT()); setTk(i); }, []);
+  useEffect(() => { if (pa) return; const iv = setInterval(() => { if (tr.current.filter(t => t.status !== "Resolved").length < 16) { const n = mkT(); setTk(p => [n, ...p]); nfy("🎫 " + n.ti.slice(0, 50), "w"); } }, (22000 + Math.random() * 28000) / sp); return () => clearInterval(iv); }, [pa, sp, nfy]);
+  useEffect(() => { const iv = setInterval(() => { setTk(p => p.map(t => { if (t.status === "Resolved") return t; if ((Date.now() - t.cr) / 60000 > t.sla && !t.breach) return { ...t, breach: true }; return t; })); }, 4000); return () => clearInterval(iv); }, []);
+
+  const doS = (id, i) => { setDn(p => ({ ...p, [id]: { ...(p[id] || {}), [i]: true } })); setTk(p => p.map(t => t.id === id && t.status === "Open" ? { ...t, status: "In Progress" } : t)); aL("Step " + (i + 1) + " on " + id); };
+  const res = id => { const t = tk.find(x => x.id === id); if (!t) return; const o = (Date.now() - t.cr) / 60000 <= t.sla; setTk(p => p.map(x => x.id === id ? { ...x, status: "Resolved" } : x)); setSc(p => ({ r: p.r + 1, ok: p.ok + (o ? 1 : 0), bad: p.bad + (o ? 0 : 1), pt: p.pt + ({ Critical: 50, High: 30, Medium: 20, Low: 10 }[t.p] || 10) * (o ? 1.5 : 1) })); aL("✅ " + id); nfy("✅ " + id + (o ? " +SLA bonus" : ""), "s"); setSel(null); setPg("tk"); };
+  const clT = id => { const t = tk.find(x => x.id === id); if (!t || t.status !== "Resolved") return; setCl(p => [{ ...t, status: "Closed" }, ...p]); setTk(p => p.filter(x => x.id !== id)); aL("📁 " + id); };
+  const aN = id => { if (!nt.trim()) return; setTk(p => p.map(t => t.id === id ? { ...t, notes: [...t.notes, { x: nt, t: Date.now() }] } : t)); setNt(""); };
+
+  const oN = tk.filter(t => t.status === "Open").length;
+  const cN = tk.filter(t => t.p === "Critical" && t.status !== "Resolved").length;
+  const bN = tk.filter(t => t.breach && t.status !== "Resolved").length;
+  const ftk = useMemo(() => tk.filter(t => { if (tf === "all") return true; if (tf === "open") return t.status === "Open"; if (tf === "ip") return t.status === "In Progress"; if (tf === "res") return t.status === "Resolved"; return t.c === tf; }).sort((a, b) => ({ Open: 0, "In Progress": 1, Resolved: 2 }[a.status] - { Open: 0, "In Progress": 1, Resolved: 2 }[b.status]) || ({ Critical: 0, High: 1, Medium: 2, Low: 3 }[a.p] - { Critical: 0, High: 1, Medium: 2, Low: 3 }[b.p])), [tk, tf]);
+
+  // STYLE
+  const bg2 = (c) => ({ display: "inline-block", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: c + "20", color: c, whiteSpace: "nowrap" });
+  const bt2 = (c = X.a) => ({ padding: "5px 11px", background: c, color: "#fff", border: "none", borderRadius: 5, cursor: "pointer", fontSize: 11, fontWeight: 600 });
+  const bo2 = (c = X.a) => ({ padding: "4px 10px", background: "transparent", color: c, border: "1px solid " + c + "44", borderRadius: 5, cursor: "pointer", fontSize: 11 });
+  const nb2 = a => ({ padding: "5px 11px", background: a ? X.a + "18" : "transparent", color: a ? X.a : X.t3, border: "none", borderRadius: 5, cursor: "pointer", fontSize: 11, fontWeight: a ? 600 : 400 });
+  const cd2 = { background: X.p, border: "1px solid " + X.pb, borderRadius: 8, padding: 11, marginBottom: 7 };
+  const ip2 = { padding: "5px 9px", background: X.bg, border: "1px solid " + X.pb, borderRadius: 5, color: X.t1, fontSize: 12, width: "100%", outline: "none", boxSizing: "border-box" };
+  const th3 = { padding: "7px 7px", color: X.t3, fontWeight: 600, fontSize: 9, textTransform: "uppercase", letterSpacing: ".4px", borderBottom: "1px solid " + X.pb, textAlign: "left" };
+  const td3 = { padding: "6px 7px", borderBottom: "1px solid " + X.pb + "88", fontSize: 11 };
+  const av2 = (u, sz = 20) => { const usr = typeof u === "string" ? U.find(x => x.id === u) : u; if (!usr) return null; return <div key={usr.id} style={{ width: sz, height: sz, borderRadius: "50%", background: `hsl(${usr.id.charCodeAt(2) * 37 % 360},55%,42%)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: sz * .36, fontWeight: 700, color: "#fff", flexShrink: 0 }}>{usr.av}</div>; };
+  const bar2 = (v, mx, c = X.ok) => <div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ flex: 1, height: 4, background: X.bg, borderRadius: 2, overflow: "hidden" }}><div style={{ width: pct(v, mx) + "%", height: "100%", background: pct(v, mx) > 85 ? X.er : pct(v, mx) > 65 ? X.wn : c, borderRadius: 2 }} /></div><span style={{ fontSize: 9, color: X.t3, whiteSpace: "nowrap" }}>{Math.round(v)}/{mx}</span></div>;
+  const g22 = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 };
+  const hd = t => <div style={{ fontWeight: 700, fontSize: 13, margin: "12px 0 7px", display: "flex", alignItems: "center", gap: 5 }}>{t}</div>;
+  const kv = (k, v, c) => <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderBottom: "1px solid " + X.pb + "44", fontSize: 11 }}><span style={{ color: X.t2 }}>{k}</span><span style={c ? bg2(c) : { fontWeight: 600 }}>{v}</span></div>;
+
+  // ═══════════════════════════════════════════════════════════
+  // DASHBOARD
+  // ═══════════════════════════════════════════════════════════
+  const Dash = () => (<div>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+      <div><h2 style={{ margin: 0, fontSize: 17 }}>Microsoft 365 Admin Center</h2><div style={{ fontSize: 10, color: X.t3, marginTop: 1 }}>{TN.name} · {TN.vanity} · Entra Tenant: {TN.id.slice(0, 8)}... · {TN.region}</div></div>
+      <div style={{ display: "flex", gap: 3, alignItems: "center" }}><span style={{ fontSize: 9, color: X.t3 }}>Sim:</span>{[1, 2, 3].map(s => <button key={s} onClick={() => setSp(s)} style={bt2(sp === s ? X.a : X.pb)}>{s}x</button>)}<button onClick={() => setPa(!pa)} style={bt2(pa ? X.ok : X.wn)}>{pa ? "▶" : "⏸"}</button></div>
+    </div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 5, marginBottom: 10 }}>
+      {[{ l: "Open", v: oN, c: X.wn, i: "📬" }, { l: "Critical", v: cN, c: X.er, i: "🚨" }, { l: "SLA Breach", v: bN, c: X.cr, i: "⏰" }, { l: "Risky Users", v: U.filter(u => u.ri !== "None").length, c: "#f97316", i: "⚠️" }, { l: "Resolved", v: sc.r, c: X.ok, i: "✅" }, { l: "Score", v: Math.floor(sc.pt), c: "#8b5cf6", i: "⭐" }].map(s => (
+        <div key={s.l} style={{ ...cd2, borderTop: "3px solid " + s.c, textAlign: "center" }}><div style={{ fontSize: 9, color: X.t3 }}>{s.i} {s.l}</div><div style={{ fontSize: 20, fontWeight: 700 }}>{s.v}</div></div>
+      ))}
+    </div>
+    {/* Service Health */}
+    <div style={cd2}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontWeight: 600, fontSize: 12 }}>🏥 Service Health</span><span style={{ fontSize: 9, color: X.t3 }}>{fT(Date.now())}</span></div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 4 }}>{SVC_HEALTH.map(s => <div key={s.s} style={{ padding: "5px 7px", background: X.p2, borderRadius: 5, border: "1px solid " + (s.inc > 0 ? X.er + "44" : s.adv > 0 ? X.wn + "33" : X.pb) }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 10, fontWeight: 600 }}>{s.i} {s.s}</span><div style={{ width: 6, height: 6, borderRadius: "50%", background: s.inc > 0 ? X.er : s.adv > 0 ? X.wn : X.ok }} /></div><div style={{ fontSize: 9, color: s.inc > 0 ? X.er : X.t3 }}>{s.st}</div></div>)}</div>
+    </div>
+    <div style={g22}>
+      {/* AAD Identity Summary */}
+      <div style={cd2}><span style={{ fontWeight: 600, fontSize: 12 }}>🔐 Identity & Access (AAD/Entra)</span>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 5, marginTop: 6 }}>
+          <div style={{ padding: 5, background: X.p2, borderRadius: 4, textAlign: "center" }}><div style={{ fontSize: 15, fontWeight: 700, color: X.er }}>{U.filter(u => !u.mfa && u.ac).length}</div><div style={{ fontSize: 8, color: X.t3 }}>No MFA</div></div>
+          <div style={{ padding: 5, background: X.p2, borderRadius: 4, textAlign: "center" }}><div style={{ fontSize: 15, fontWeight: 700, color: X.wn }}>{RISK_DET.filter(r => !r.remediated).length}</div><div style={{ fontSize: 8, color: X.t3 }}>Risk Detections</div></div>
+          <div style={{ padding: 5, background: X.p2, borderRadius: 4, textAlign: "center" }}><div style={{ fontSize: 15, fontWeight: 700, color: X["AAD/Entra"] }}>{PIM_LOG.filter(l => l.status === "Active").length}</div><div style={{ fontSize: 8, color: X.t3 }}>PIM Active</div></div>
+        </div>
+        <div style={{ marginTop: 5, fontSize: 10 }}>
+          {kv("Entra Connect Last Sync", fT(AAD_CONNECT.lastSync), AAD_CONNECT.syncErrors.filter(e => e.sev === "Error").length > 0 ? X.wn : X.ok)}
+          {kv("Sync Errors", AAD_CONNECT.syncErrors.filter(e => e.sev === "Error").length.toString(), AAD_CONNECT.syncErrors.filter(e => e.sev === "Error").length > 0 ? X.er : X.ok)}
+          {kv("SSPR Registered", pct(SSPR.registration.registered, SSPR.registration.total) + "%", pct(SSPR.registration.registered, SSPR.registration.total) > 70 ? X.ok : X.wn)}
+          {kv("App Reg Issues", APP_REGS.filter(a => a.status.includes("EXPIRED") || a.status.includes("expiring") || a.status.includes("No owner")).length.toString(), X.er)}
+        </div>
+      </div>
+      {/* SLA + Security */}
+      <div style={cd2}><span style={{ fontWeight: 600, fontSize: 12 }}>📊 Performance & Security</span>
+        <div style={{ display: "flex", gap: 14, margin: "6px 0" }}>
+          <div><div style={{ fontSize: 18, fontWeight: 700, color: X.ok }}>{sc.ok}</div><div style={{ fontSize: 9, color: X.t3 }}>SLA Met</div></div>
+          <div><div style={{ fontSize: 18, fontWeight: 700, color: X.er }}>{sc.bad}</div><div style={{ fontSize: 9, color: X.t3 }}>Breached</div></div>
+          <div><div style={{ fontSize: 18, fontWeight: 700, color: X.a }}>{sc.r > 0 ? Math.round(sc.ok / sc.r * 100) : 0}%</div><div style={{ fontSize: 9, color: X.t3 }}>Rate</div></div>
+        </div>
+        <div style={{ fontSize: 10 }}>
+          {kv("Security Alerts", RISK_DET.filter(r => !r.remediated).length + " active", X.er)}
+          {kv("Guest Users", GUESTS.length + " (" + GUESTS.filter(g => !g.redeemed).length + " pending)", X.wn)}
+          {kv("Non-Compliant Devices", U.filter(u => u.co === "NonCompliant").length.toString(), X.er)}
+          {kv("Expired App Secrets", APP_REGS.filter(a => a.status.includes("EXPIRED")).length.toString(), X.er)}
+        </div>
+      </div>
+    </div>
+    {/* Tickets */}
+    <div style={cd2}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}><span style={{ fontWeight: 600, fontSize: 12 }}>🎫 Latest Tickets</span><button onClick={() => setPg("tk")} style={bo2()}>All →</button></div>
+      {tk.filter(t => t.status !== "Resolved").slice(0, 7).map(t => <div key={t.id} onClick={() => { setSel(t.id); setPg("dt"); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 7px", borderRadius: 4, cursor: "pointer", borderBottom: "1px solid " + X.pb + "66" }}><span style={{ fontSize: 12 }}>{cI(t.c)}</span><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.ti}</div><div style={{ fontSize: 9, color: X.t4 }}>{t.id} · {t.rp} · {ago(Date.now() - t.cr)}</div></div><span style={bg2(pC(t.p))}>{t.p}</span><span style={bg2(t.status === "In Progress" ? X.a : X.wn)}>{t.status}</span>{t.breach && <span style={bg2(X.er)}>SLA!</span>}</div>)}
+    </div>
+  </div>);
+
+  // ═══════════════════════════════════════════════════════════
+  // TICKETS + DETAIL (compact)
+  // ═══════════════════════════════════════════════════════════
+  const TkL = () => (<div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 3 }}><h2 style={{ margin: 0, fontSize: 15 }}>🎫 Queue ({tk.filter(t => t.status !== "Resolved").length})</h2><div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>{[{ k: "all", l: "All" }, { k: "open", l: "Open" }, { k: "ip", l: "WIP" }, { k: "res", l: "Done" }, ...["AAD/Entra", "Teams", "SharePoint", "Exchange", "Security", "Outlook", "OneDrive", "Intune", "Power Platform", "Purview"].map(c => ({ k: c, l: cI(c) }))].map(f => <button key={f.k} onClick={() => setTf(f.k)} style={nb2(tf === f.k)} title={f.k}>{f.l}</button>)}</div></div>
+    {ftk.length === 0 && <div style={{ textAlign: "center", padding: 20, color: X.t3 }}>Empty 🎉</div>}
+    {ftk.map(t => <div key={t.id} onClick={() => { setSel(t.id); setPg("dt"); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 8px", borderRadius: 4, cursor: "pointer", borderBottom: "1px solid " + X.pb + "55" }}><span style={{ fontSize: 13 }}>{cI(t.c)}</span><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.ti}</div><div style={{ fontSize: 9, color: X.t4 }}>{t.id} · {t.rp} · {t.c} · {ago(Date.now() - t.cr)}</div></div><span style={bg2(pC(t.p))}>{t.p}</span><span style={bg2(t.status === "Resolved" ? X.ok : t.status === "In Progress" ? X.a : X.wn)}>{t.status}</span>{t.breach && <span style={bg2(X.er)}>SLA!</span>}{t.status === "Resolved" && <button onClick={e => { e.stopPropagation(); clT(t.id); }} style={bt2(X.ok)}>Close</button>}</div>)}
+  </div>);
+
+  const TkD = () => { const t = tk.find(x => x.id === sel); if (!t) return <div style={{ padding: 20, color: X.t3 }}><button onClick={() => setPg("tk")} style={bo2()}>Back</button> Not found</div>; const cp = dn[t.id] || {}; const ad = t.st.every((_, i) => cp[i]); const el = (Date.now() - t.cr) / 60000; return (<div>
+    <button onClick={() => setPg("tk")} style={{ ...bo2(), marginBottom: 8 }}>← Queue</button>
+    <div style={{ ...cd2, borderLeft: "4px solid " + cC(t.c) }}><div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap", marginBottom: 5 }}><span style={{ fontSize: 15 }}>{cI(t.c)}</span><span style={{ fontSize: 9, color: X.t4, fontFamily: "monospace" }}>{t.id}</span><span style={bg2(pC(t.p))}>{t.p}</span><span style={bg2(t.status === "Resolved" ? X.ok : t.status === "In Progress" ? X.a : X.wn)}>{t.status}</span>{t.breach ? <span style={bg2(X.er)}>⚠ SLA BREACH</span> : <span style={bg2(X.ok)}>SLA: {Math.max(0, Math.floor(t.sla - el))}m</span>}</div>
+      <h3 style={{ margin: "0 0 7px", fontSize: 14 }}>{t.ti}</h3>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 8, fontSize: 10 }}><div><span style={{ color: X.t3 }}>Reporter</span><br /><strong>{t.rp}</strong><br /><span style={{ color: X.t4, fontSize: 9 }}>{t.re}</span></div><div><span style={{ color: X.t3 }}>Service</span><br /><strong>{t.c}</strong></div><div><span style={{ color: X.t3 }}>Assigned</span><br /><strong>You (IT Admin)</strong></div></div>
+      <div style={{ padding: 7, background: X.bg, borderRadius: 4, fontSize: 11, lineHeight: 1.5 }}><div style={{ color: X.t3, fontSize: 8, textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>Description</div>{t.de}</div>
+    </div>
+    <div style={{ ...cd2, marginTop: 0 }}><div style={{ fontWeight: 600, fontSize: 11, marginBottom: 2 }}>🔧 Resolution</div><div style={{ fontSize: 10, color: X.a, marginBottom: 6, padding: "3px 7px", background: X.a + "0a", borderRadius: 3, borderLeft: "3px solid " + X.a }}>💡 {t.h}</div>
+      {t.st.map((s, i) => { const d = !!cp[i]; const cn = i === 0 || cp[i - 1]; return <div key={i} onClick={() => { if (!d && cn && t.status !== "Resolved") doS(t.id, i); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 7px", background: d ? X.ok + "0c" : X.bg, borderRadius: 3, marginBottom: 2, cursor: d ? "default" : cn ? "pointer" : "default", border: "1px solid " + (d ? X.ok + "30" : X.pb), opacity: cn || d ? 1 : .3 }}><div style={{ width: 15, height: 15, borderRadius: 3, border: "2px solid " + (d ? X.ok : X.t4), background: d ? X.ok : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>{d ? "✓" : ""}</div><span style={{ flex: 1, fontSize: 10, textDecoration: d ? "line-through" : "none", color: d ? X.t3 : X.t1 }}>{s}</span>{!d && cn && t.status !== "Resolved" && <span style={{ fontSize: 8, color: X.a }}>▶</span>}</div>; })}
+      {ad && t.status !== "Resolved" && <button onClick={() => res(t.id)} style={{ ...bt2(X.ok), width: "100%", marginTop: 6, padding: "7px 0" }}>✅ Resolve</button>}
+      {t.status === "Resolved" && <div style={{ textAlign: "center", padding: 6, background: X.ok + "10", borderRadius: 4, marginTop: 5, color: X.ok, fontWeight: 600, fontSize: 11 }}>Resolved — <button onClick={() => clT(t.id)} style={bt2(X.ok)}>Close</button></div>}
+    </div>
+    <div style={{ ...cd2, marginTop: 0 }}><div style={{ fontWeight: 600, fontSize: 11, marginBottom: 3 }}>📝 Notes</div>{t.notes.map((n, i) => <div key={i} style={{ padding: "2px 5px", background: X.bg, borderRadius: 3, marginBottom: 1, fontSize: 9 }}><span style={{ color: X.t3 }}>{fT(n.t)}</span> {n.x}</div>)}<div style={{ display: "flex", gap: 4, marginTop: 3 }}><input value={nt} onChange={e => setNt(e.target.value)} onKeyDown={e => e.key === "Enter" && aN(t.id)} placeholder="Note..." style={ip2} /><button onClick={() => aN(t.id)} style={bt2()}>+</button></div></div>
+  </div>); };
+
+  // ═══════════════════════════════════════════════════════════
+  // ADMIN CENTER
+  // ═══════════════════════════════════════════════════════════
+  const Adm = () => (<div>
+    <h2 style={{ margin: "0 0 8px", fontSize: 15 }}>🏢 Admin Center</h2>
+    <div style={{ display: "flex", gap: 2, marginBottom: 10, flexWrap: "wrap" }}>{[{k:"aad",l:"🔐 AAD / Entra ID"},{k:"sec",l:"🛡️ Security"},{k:"exch",l:"📧 Exchange"},{k:"outlook",l:"📨 Outlook"},{k:"teams",l:"💬 Teams"},{k:"sp",l:"📄 SharePoint"},{k:"intune",l:"📱 Intune"},{k:"power",l:"⚡ Power"},{k:"purview",l:"🔏 Purview"},{k:"lic",l:"📋 Licenses"}].map(t => <button key={t.k} onClick={() => setAt(t.k)} style={nb2(at === t.k)}>{t.l}</button>)}</div>
+
+    {/* ═══ AAD / ENTRA ID ═══ */}
+    {at === "aad" && <div>
+      <div style={{ display: "flex", gap: 2, marginBottom: 8, flexWrap: "wrap" }}>{[{k:"overview",l:"Overview"},{k:"users",l:"Users"},{k:"guests",l:"B2B Guests"},{k:"connect",l:"Entra Connect"},{k:"pim",l:"PIM"},{k:"sspr",l:"SSPR"},{k:"authmeth",l:"Auth Methods"},{k:"named",l:"Named Locations"},{k:"risk",l:"Risk Detections"},{k:"reviews",l:"Access Reviews"},{k:"appreg",l:"App Registrations"},{k:"ca",l:"Cond. Access"},{k:"audit",l:"Audit Log"}].map(v => <button key={v.k} onClick={() => setEt(v.k)} style={nb2(et === v.k)}>{v.l}</button>)}</div>
+
+      {et === "overview" && <div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, marginBottom: 10 }}>
+          {[{l:"Total Users",v:U.length,c:X.a},{l:"Active",v:U.filter(u=>u.ac).length,c:X.ok},{l:"Guests",v:GUESTS.length,c:X.wn},{l:"Disabled",v:U.filter(u=>!u.ac).length,c:X.er},{l:"Cloud Only",v:U.filter(u=>u.src==="Cloud").length,c:X.a},{l:"Synced (AAD Connect)",v:U.filter(u=>u.src==="Synced").length,c:"#8b5cf6"},{l:"MFA Registered",v:U.filter(u=>u.mfa).length,c:X.ok},{l:"No MFA",v:U.filter(u=>!u.mfa&&u.ac).length,c:X.er}].map(s => <div key={s.l} style={{...cd2,textAlign:"center",borderTop:"2px solid "+s.c}}><div style={{fontSize:9,color:X.t3}}>{s.l}</div><div style={{fontSize:18,fontWeight:700}}>{s.v}</div></div>)}
+        </div>
+        <div style={g22}>
+          <div style={cd2}><div style={{fontWeight:600,fontSize:12,marginBottom:4}}>🔗 Entra Connect Status</div>
+            {kv("Server",AAD_CONNECT.server)}{kv("Version",AAD_CONNECT.version)}{kv("Status",AAD_CONNECT.status,X.ok)}{kv("Last Sync",fT(AAD_CONNECT.lastSync),AAD_CONNECT.syncErrors.filter(e=>e.sev==="Error").length?X.wn:X.ok)}{kv("Sync Errors",AAD_CONNECT.syncErrors.filter(e=>e.sev==="Error").length.toString(),AAD_CONNECT.syncErrors.filter(e=>e.sev==="Error").length?X.er:X.ok)}{kv("Password Sync",AAD_CONNECT.pwSync?"Enabled":"Disabled",AAD_CONNECT.pwSync?X.ok:X.er)}{kv("Password Writeback",AAD_CONNECT.pwWriteback?"Enabled":"Disabled",X.ok)}{kv("Seamless SSO",AAD_CONNECT.seamlessSso?"Enabled":"Disabled",X.ok)}
+          </div>
+          <div style={cd2}><div style={{fontWeight:600,fontSize:12,marginBottom:4}}>🎖️ PIM Active Roles</div>
+            {PIM_LOG.filter(l=>l.status==="Active").map(l=>{const usr=U.find(x=>x.id===l.user);return <div key={l.role+l.user} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid "+X.pb+"44",fontSize:10}}><div style={{display:"flex",alignItems:"center",gap:3}}>{usr&&av2(usr,14)}<span>{usr?.n}</span></div><span style={bg2(X["AAD/Entra"])}>{l.role}</span></div>;})}
+          </div>
+        </div>
+      </div>}
+
+      {et === "users" && <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}><thead><tr style={{background:X.bg}}>{["User","Dept","License","Source","Status","MFA","MFA Method","Risk","Compliance","SSPR","Password Changed"].map(h=><th key={h} style={th3}>{h}</th>)}</tr></thead><tbody>{U.map(u=><tr key={u.id}><td style={td3}><div style={{display:"flex",alignItems:"center",gap:4}}>{av2(u,16)}<div><div style={{fontWeight:600}}>{u.n}</div><div style={{fontSize:8,color:X.t4}}>{u.e}</div></div></div></td><td style={td3}>{u.dp}</td><td style={td3}><span style={bg2(X.a)}>{u.li}</span></td><td style={td3}><span style={bg2(u.src==="Cloud"?X.a:X["AAD/Entra"])}>{u.src}</span></td><td style={td3}><span style={bg2(u.ac?X.ok:X.er)}>{u.ac?"Active":"Disabled"}</span></td><td style={td3}><span style={bg2(u.mfa?X.ok:X.er)}>{u.mfa?"On":"Off"}</span></td><td style={{...td3,fontSize:9,color:X.t2}}>{u.mm}</td><td style={td3}><span style={bg2(u.ri==="None"?X.ok:u.ri==="Low"?X.wn:X.er)}>{u.ri}</span></td><td style={td3}><span style={bg2(u.co==="Compliant"?X.ok:X.er)}>{u.co}</span></td><td style={td3}><span style={bg2(u.sspr?X.ok:X.er)}>{u.sspr?"Yes":"No"}</span></td><td style={{...td3,fontSize:9,color:X.t3}}>{u.pw}</td></tr>)}</tbody></table></div>}
+
+      {et === "guests" && <div><div style={cd2}><span style={{fontWeight:600,fontSize:12}}>External Collaboration (B2B)</span><div style={{fontSize:10,color:X.t2,marginTop:3}}>Guest users from external organizations with scoped access to tenant resources.</div></div>{GUESTS.map(g=><div key={g.id} style={{...cd2,borderLeft:"3px solid "+(g.redeemed?X.ok:X.wn)}}><div style={{display:"flex",justifyContent:"space-between"}}><div><span style={{fontWeight:600,fontSize:12}}>{g.n}</span><div style={{fontSize:10,color:X.t3}}>{g.e} · {g.org}</div></div><span style={bg2(g.state==="Accepted"?X.ok:X.wn)}>{g.state}</span></div><div style={{fontSize:10,marginTop:4}}>{kv("Invited",g.inv)}{kv("Last Login",g.lastLogin)}{kv("MFA",g.mfa,g.mfa.includes("⚠")?X.er:X.ok)}{kv("Access",g.access.join(", "))}</div></div>)}</div>}
+
+      {et === "connect" && <div>
+        <div style={cd2}><div style={{fontWeight:600,fontSize:12,marginBottom:6}}>🔗 Azure AD Connect / Entra Connect</div>
+          <div style={g22}><div>{kv("Server",AAD_CONNECT.server)}{kv("Version",AAD_CONNECT.version)}{kv("Status",AAD_CONNECT.status,X.ok)}{kv("Staging Mode",AAD_CONNECT.staging?"Yes":"No")}</div><div>{kv("Last Sync",fT(AAD_CONNECT.lastSync)+" ("+AAD_CONNECT.lastSyncType+")")}{kv("Next Sync",fT(AAD_CONNECT.nextSync))}{kv("Interval",AAD_CONNECT.syncInterval+"min")}{kv("Health Alerts",AAD_CONNECT.health.alerts.toString(),AAD_CONNECT.health.alerts?X.wn:X.ok)}</div></div>
+        </div>
+        {hd("🔌 Connectors")}
+        {AAD_CONNECT.connectors.map(c=><div key={c.name} style={{...cd2,borderLeft:"3px solid "+(c.errors?X.er:X.ok)}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:12}}>{c.name}</span><span style={bg2(c.status==="Connected"?X.ok:X.er)}>{c.status}</span></div><div style={{fontSize:10,color:X.t3}}>{c.type} · Users: {c.objects.users} · Groups: {c.objects.groups} · Last: {fT(c.lastRun)}</div>{(c.errors>0||c.warnings>0)&&<div style={{marginTop:3,display:"flex",gap:3}}>{c.errors>0&&<span style={bg2(X.er)}>{c.errors} errors</span>}{c.warnings>0&&<span style={bg2(X.wn)}>{c.warnings} warnings</span>}</div>}</div>)}
+        {hd("❌ Sync Errors")}
+        {AAD_CONNECT.syncErrors.map((e,i)=><div key={i} style={{...cd2,borderLeft:"3px solid "+(e.sev==="Error"?X.er:X.wn)}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:11}}>{e.err}</span><span style={bg2(e.sev==="Error"?X.er:X.wn)}>{e.sev}</span></div><div style={{fontSize:10,color:X.t2,marginTop:2}}>{e.desc}</div><div style={{fontSize:9,color:X.t4,fontFamily:"monospace",marginTop:1}}>{e.obj}</div></div>)}
+        <div style={{marginTop:4,fontSize:10,color:X.t3}}>Features: Password Hash Sync ✓ · Password Writeback ✓ · Seamless SSO ✓ · Pass-through Auth ✗</div>
+      </div>}
+
+      {et === "pim" && <div>
+        {hd("🎖️ Privileged Identity Management (PIM)")}
+        {PIM_ROLES.map(r=><div key={r.role} style={{...cd2,borderLeft:"3px solid "+X["AAD/Entra"]}}><div style={{fontWeight:600,fontSize:12,marginBottom:4}}>{r.role}</div><div style={{fontSize:10}}>{kv("Eligible Users",r.eligible.map(id=>U.find(u=>u.id===id)?.n).join(", "))}{kv("Currently Active",r.active.length>0?r.active.map(id=>U.find(u=>u.id===id)?.n).join(", "):"None",r.active.length>0?X.wn:X.ok)}{kv("Max Duration",r.maxDuration)}{kv("Require Approval",r.reqApproval?"Yes (Approver: "+U.find(u=>u.id===r.approver)?.n+")":"No",r.reqApproval?X.wn:X.ok)}{kv("Require MFA",r.reqMfa?"Yes":"No",r.reqMfa?X.ok:X.er)}{kv("Require Justification",r.reqJustification?"Yes":"No")}</div></div>)}
+        {hd("📋 PIM Activation Log")}
+        {PIM_LOG.map((l,i)=>{const usr=U.find(u=>u.id===l.user);return <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid "+X.pb+"55",fontSize:10}}><div style={{display:"flex",alignItems:"center",gap:4}}>{usr&&av2(usr,14)}<div><span style={{fontWeight:600}}>{usr?.n}</span><span style={{color:X.t3,marginLeft:4}}>{l.role} ({l.duration})</span></div></div><div style={{display:"flex",gap:3}}><span style={{color:X.t3}}>{fT(l.time)}</span><span style={bg2(l.status==="Active"?X.wn:X.t3)}>{l.status}</span></div></div>;})}
+      </div>}
+
+      {et === "sspr" && <div>
+        {hd("🔑 Self-Service Password Reset (SSPR)")}
+        <div style={g22}>
+          <div style={cd2}><div style={{fontWeight:600,fontSize:12,marginBottom:4}}>Policy</div>{kv("Status",SSPR.enabled)}{kv("Target Groups",SSPR.groups.join(", "))}{kv("Required Methods",SSPR.methods+" of: "+SSPR.methodsAvail.join(", "))}</div>
+          <div style={cd2}><div style={{fontWeight:600,fontSize:12,marginBottom:4}}>Registration</div>{kv("Total Active Users",SSPR.registration.total.toString())}{kv("Registered for SSPR",SSPR.registration.registered.toString(),pct(SSPR.registration.registered,SSPR.registration.total)>70?X.ok:X.wn)}{kv("SSPR Capable (MFA+SSPR)",SSPR.registration.capable.toString())}{bar2(SSPR.registration.registered,SSPR.registration.total,X.ok)}</div>
+        </div>
+        <div style={g22}>
+          <div style={cd2}><div style={{fontWeight:600,fontSize:12,marginBottom:4}}>🔒 Smart Lockout</div>{kv("Lockout Threshold",SSPR.lockout.threshold+" attempts")}{kv("Lockout Duration",SSPR.lockout.duration+"s")}{kv("Smart Lockout",SSPR.lockout.smartLockout?"Enabled":"Disabled",X.ok)}</div>
+          <div style={cd2}><div style={{fontWeight:600,fontSize:12,marginBottom:4}}>🚫 Banned Passwords</div>{kv("Custom Ban List","Enabled",X.ok)}<div style={{marginTop:3}}>{SSPR.banPw.custom.map(w=><span key={w} style={{...bg2(X.er),marginRight:3,marginBottom:2,display:"inline-block"}}>{w}</span>)}</div></div>
+        </div>
+        {hd("📋 Recent SSPR Activity")}
+        {SSPR.activity.map((a,i)=>{const usr=U.find(u=>u.id===a.u);return <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid "+X.pb+"44",fontSize:10}}><div style={{display:"flex",alignItems:"center",gap:3}}>{usr&&av2(usr,14)}<span>{usr?.n} — {a.action}</span></div><div><span style={{color:X.t3}}>{fT(a.time)}</span> <span style={bg2(X.ok)}>{a.method}</span></div></div>;})}
+      </div>}
+
+      {et === "authmeth" && <div>{hd("🔐 Authentication Methods Policy")}<table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}><thead><tr style={{background:X.bg}}>{["Method","Status","Target","Passwordless","Number Match","Registration %"].map(h=><th key={h} style={th3}>{h}</th>)}</tr></thead><tbody>{AUTH_METHODS.map(m=><tr key={m.method}><td style={{...td3,fontWeight:600}}>{m.method}</td><td style={td3}><span style={bg2(m.status==="Enabled"?X.ok:X.er)}>{m.status}</span></td><td style={{...td3,color:X.t2}}>{m.target}</td><td style={td3}><span style={bg2(m.passwordless?X.ok:X.t3)}>{m.passwordless?"Yes":"No"}</span></td><td style={td3}>{m.numMatch?"Yes":"—"}</td><td style={{...td3,minWidth:80}}>{m.regPct>0?bar2(m.regPct,100,X.a):"—"}</td></tr>)}</tbody></table></div>}
+
+      {et === "named" && <div>{hd("📍 Named Locations")}{NAMED_LOCS.map(l=><div key={l.name} style={{...cd2,borderLeft:"3px solid "+(l.trusted?X.ok:X.er)}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:12}}>{l.name}</span><div style={{display:"flex",gap:3}}><span style={bg2(l.type==="Countries"?X.er:X.a)}>{l.type}</span><span style={bg2(l.trusted?X.ok:X.er)}>{l.trusted?"Trusted":"Untrusted"}</span>{l.mfaSkip&&<span style={bg2(X.wn)}>MFA Skip</span>}</div></div><div style={{fontSize:10,color:X.t3,fontFamily:"monospace",marginTop:2}}>{l.ranges?l.ranges.join(", "):l.countries?.join(", ")}</div></div>)}</div>}
+
+      {et === "risk" && <div>{hd("⚠️ Risk Detections")}{RISK_DET.map(r=>{const usr=U.find(u=>u.id===r.user);return <div key={r.id} style={{...cd2,borderLeft:"3px solid "+({High:X.er,Medium:X.wn,Low:X.ok}[r.level])}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:12}}>{r.type}</span><div style={{display:"flex",gap:3}}><span style={bg2({High:X.er,Medium:X.wn,Low:X.ok}[r.level])}>{r.level}</span><span style={bg2(r.remediated?X.ok:X.er)}>{r.remediated?"Remediated":"At Risk"}</span></div></div><div style={{fontSize:10,color:X.t2,marginTop:2}}>{r.detail}</div><div style={{fontSize:9,color:X.t3,marginTop:1}}>User: {usr?.n} ({usr?.e}) · {fD(r.time)} {fT(r.time)}</div></div>;})}
+      </div>}
+
+      {et === "reviews" && <div>{hd("📋 Access Reviews")}{ACCESS_REVIEWS.map(r=><div key={r.name} style={{...cd2,borderLeft:"3px solid "+(r.status==="InProgress"?X.wn:r.status==="Completed"?X.ok:X.t3)}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:12}}>{r.name}</span><span style={bg2(r.status==="InProgress"?X.wn:r.status==="Completed"?X.ok:X.t3)}>{r.status}</span></div><div style={{fontSize:10,marginTop:3}}>{kv("Scope",r.scope)}{kv("Due",r.due)}{kv("Reviewer",U.find(u=>u.id===r.reviewer)?.n||r.reviewer)}{kv("Progress",r.reviewed+"/"+r.total+" reviewed")}{kv("If not reviewed",r.autoAction)}</div>{r.status==="InProgress"&&bar2(r.reviewed,r.total,X.wn)}</div>)}</div>}
+
+      {et === "appreg" && <div>{hd("📦 App Registrations")}{APP_REGS.map(a=><div key={a.appId} style={{...cd2,borderLeft:"3px solid "+(a.status.includes("EXPIRED")?X.er:a.status.includes("expiring")||a.status.includes("No owner")?X.wn:X.ok)}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:12}}>{a.name}</span><span style={bg2(a.status.includes("Healthy")?X.ok:a.status.includes("EXPIRED")?X.er:X.wn)}>{a.status}</span></div><div style={{fontSize:10,marginTop:3}}>{kv("App ID",a.appId)}{kv("Type",a.type)}{kv("Secrets",a.secrets+" (expires: "+a.secretExpiry+")",a.status.includes("EXPIRED")?X.er:X.ok)}{kv("Certificates",a.certs.toString())}{kv("Owners",a.owners.length>0?a.owners.map(id=>U.find(u=>u.id===id)?.n).join(", "):"⚠ None",a.owners.length?X.ok:X.er)}{kv("Permissions",a.permissions.join(", ")+" ("+a.permType+")")}</div></div>)}</div>}
+
+      {et === "ca" && <div>{hd("🔒 Conditional Access Policies")}{CA_D.map(c=><div key={c.n} style={{...cd2,borderLeft:"3px solid "+(c.st==="On"?X.ok:X.wn)}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:12}}>{c.n}</span><span style={bg2(c.st==="On"?X.ok:X.wn)}>{c.st}</span></div><div style={{fontSize:10,marginTop:3}}>{kv("Conditions",c.c)}{kv("Grant",c.g)}</div></div>)}</div>}
+
+      {et === "audit" && <div>{hd("📊 Audit Log (Recent)")}<table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}><thead><tr style={{background:X.bg}}>{["Time","Actor","Activity","Target","Result","Category"].map(h=><th key={h} style={th3}>{h}</th>)}</tr></thead><tbody>{AUDIT_LOG.map((l,i)=>{const usr=l.actor!=="System"?U.find(u=>u.id===l.actor):null;return <tr key={i}><td style={{...td3,whiteSpace:"nowrap"}}>{fT(l.time)}</td><td style={td3}>{usr?<div style={{display:"flex",alignItems:"center",gap:3}}>{av2(usr,14)}{usr.n}</div>:<span style={{color:X.t3}}>System</span>}</td><td style={{...td3,fontWeight:600}}>{l.activity}</td><td style={{...td3,color:X.t2,maxWidth:150,overflow:"hidden",textOverflow:"ellipsis"}}>{l.target}</td><td style={td3}><span style={bg2(l.result.includes("Success")?X.ok:X.wn)}>{l.result}</span></td><td style={td3}><span style={bg2(X.a)}>{l.cat}</span></td></tr>})}</tbody></table></div>}
+    </div>}
+
+    {/* OTHER PANELS (compact) */}
+    {at === "sec" && <div>{hd("🚨 Security Alerts")}{[...RISK_DET.filter(r=>!r.remediated)].map(a=>{const usr=U.find(u=>u.id===a.user);return <div key={a.id} style={{...cd2,borderLeft:"3px solid "+({High:X.er,Medium:X.wn,Low:X.ok}[a.level])}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:11}}>{a.type}</span><span style={bg2({High:X.er,Medium:X.wn}[a.level]||X.ok)}>{a.level}</span></div><div style={{fontSize:10,color:X.t2}}>{a.detail}</div><div style={{fontSize:9,color:X.t3}}>User: {usr?.n} · {fT(a.time)}</div></div>})}{hd("🔏 DLP Policies")}{DLP_D.map(d=><div key={d.n} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid "+X.pb+"44",fontSize:11}}><span style={{fontWeight:600}}>{d.n}</span><div style={{display:"flex",gap:3}}><span style={bg2(d.st==="Enforcing"?X.ok:X.wn)}>{d.st}</span><span style={bg2(d.ma>10?X.wn:X.ok)}>{d.ma}</span></div></div>)}</div>}
+
+    {at === "exch" && <div>{hd("📬 Shared Mailboxes")}<div style={g22}>{SHARED_MBX.map(m=><div key={m.n} style={cd2}><div style={{fontWeight:600,fontSize:11}}>{m.n}</div>{bar2(m.sz,50,X.Exchange)}</div>)}</div>{hd("🏢 Meeting Rooms")}<div style={g22}>{ROOMS.map(r=><div key={r.n} style={cd2}><div style={{fontWeight:600,fontSize:11}}>{r.n}</div><div style={{fontSize:10,color:X.t3}}>{r.loc} · Cap: {r.cap}</div></div>)}</div></div>}
+
+    {at === "outlook" && <div>{hd("📨 Outlook Configuration")}<div style={g22}><div style={cd2}><div style={{fontWeight:600,fontSize:12,marginBottom:4}}>Anti-Spam/Malware</div>{[["Spam filter","On"],["Safe Attachments (E5)","On"],["Safe Links (E5)","On"],["ZAP","On"]].map(([k,v])=>kv(k,v,X.ok))}</div><div style={cd2}><div style={{fontWeight:600,fontSize:12,marginBottom:4}}>Email Auth (SPF/DKIM/DMARC)</div>{[["SPF","Valid"],["DKIM","Enabled"],["DMARC","p=quarantine"]].map(([k,v])=>kv(k,v,X.ok))}</div></div></div>}
+
+    {at === "teams" && <div>{hd("💬 Teams")}<div style={g22}>{TEAMS_D.map(t=><div key={t.n} style={cd2}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:12}}>{t.n}</span>{t.prv>0&&<span style={bg2(X.wn)}>🔒 {t.prv} private</span>}</div><div style={{fontSize:10,color:X.t3}}>{t.ch} channels · {t.mem} members</div></div>)}</div></div>}
+
+    {at === "sp" && <div>{hd("📄 SharePoint Sites")}<div style={g22}>{SP_D.map(s=><div key={s.n} style={cd2}><div style={{fontWeight:600,fontSize:12}}>{s.n}</div>{bar2(s.sz,s.qt,X.SharePoint)}</div>)}</div></div>}
+
+    {at === "intune" && <div>{hd("📱 Intune Devices")}<div style={{display:"flex",gap:5,marginBottom:8}}>{[{l:"Compliant",v:U.filter(u=>u.co==="Compliant").length,c:X.ok},{l:"Non-Compliant",v:U.filter(u=>u.co!=="Compliant").length,c:X.er}].map(s=><div key={s.l} style={{...cd2,flex:1,borderTop:"3px solid "+s.c,textAlign:"center"}}><div style={{fontSize:9,color:X.t3}}>{s.l}</div><div style={{fontSize:18,fontWeight:700}}>{s.v}</div></div>)}</div></div>}
+
+    {at === "power" && <div>{hd("⚡ Power Platform")}{[{n:"Invoice Approval",st:"On",r:156,f:8},{n:"Employee Onboarding",st:"On",r:48,f:2},{n:"IT Ticket Escalation",st:"Suspended",r:23,f:12}].map(f=><div key={f.n} style={{...cd2,borderLeft:"3px solid "+(f.st==="On"?X.ok:X.er)}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:600,fontSize:12}}>{f.n}</span><span style={bg2(f.st==="On"?X.ok:X.er)}>{f.st}</span></div><div style={{fontSize:10,color:X.t3}}>Runs: {f.r} · Failures: {f.f}</div></div>)}</div>}
+
+    {at === "purview" && <div>{hd("🔏 Purview")}<div style={g22}><div style={cd2}><div style={{fontWeight:600,fontSize:12,marginBottom:4}}>Sensitivity Labels</div>{[{n:"Public",c:X.ok,v:340},{n:"Internal",c:X.a,v:1250},{n:"Confidential",c:X.wn,v:420},{n:"Highly Confidential",c:X.er,v:85}].map(l=><div key={l.n} style={{display:"flex",justifyContent:"space-between",padding:"2px 0",fontSize:10}}><span style={{display:"flex",alignItems:"center",gap:3}}><div style={{width:7,height:7,borderRadius:2,background:l.c}}/>{l.n}</span><span style={{color:X.t2}}>{l.v}</span></div>)}</div><div style={cd2}><div style={{fontWeight:600,fontSize:12,marginBottom:4}}>Retention Policies</div>{[["Default 7yr","Exchange, SP, OD"],["Finance 10yr","Finance SP"],["Legal Hold","Legal mailboxes"]].map(([n,s])=><div key={n} style={{fontSize:10,padding:"2px 0",borderBottom:"1px solid "+X.pb+"33"}}><span style={{fontWeight:600}}>{n}</span><span style={{color:X.t3,marginLeft:4}}>{s}</span></div>)}</div></div></div>}
+
+    {at === "lic" && <div>{hd("📋 Licenses")}<div style={g22}>{LICS.map(l=><div key={l.n} style={cd2}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontWeight:600,fontSize:11}}>{l.n}</span><span style={{fontSize:9,color:X.t3}}>{l.c}/user/mo</span></div>{bar2(l.u,l.t,X.a)}<div style={{fontSize:9,color:X.t3,marginTop:2}}>{l.t-l.u} available</div></div>)}</div></div>}
+  </div>);
+
+  // ═══════════════════════════════════════════════════════════
+  // ROOT
+  // ═══════════════════════════════════════════════════════════
+  return (
+    <div style={{ fontFamily: "'Segoe UI',-apple-system,sans-serif", background: X.bg, color: X.t1, minHeight: "100vh", display: "flex", flexDirection: "column", fontSize: 12 }}>
+      <style>{`*{box-sizing:border-box;margin:0}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${X.pb};border-radius:2px}@keyframes si{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes pu{0%,100%{opacity:1}50%{opacity:.4}}tr:hover{background:${X.ph}!important}button:hover{filter:brightness(1.15)}`}</style>
+      <div style={{ background: "#070910", borderBottom: "1px solid " + X.pb, padding: "0 14px", display: "flex", alignItems: "center", height: 42, gap: 10, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ width: 24, height: 24, background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11, color: "#fff" }}>M</div>
+          <div><div style={{ fontWeight: 700, fontSize: 12 }}>M365 Admin Sim</div><div style={{ fontSize: 8, color: X.t4 }}>{TN.vanity} · Training</div></div>
+        </div>
+        <div style={{ display: "flex", gap: 1, marginLeft: 16 }}>
+          <button onClick={() => setPg("dash")} style={nb2(pg === "dash")}>📊 Dashboard</button>
+          <button onClick={() => setPg("tk")} style={nb2(pg === "tk" || pg === "dt")}>🎫 Tickets{oN > 0 && <span style={{ marginLeft: 2, padding: "0 4px", borderRadius: 7, background: X.er, color: "#fff", fontSize: 9 }}>{oN}</span>}</button>
+          <button onClick={() => setPg("admin")} style={nb2(pg === "admin")}>🏢 Admin</button>
+        </div>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+          {cN > 0 && <div style={{ padding: "2px 6px", borderRadius: 4, background: X.er + "20", color: X.er, fontSize: 9, fontWeight: 600, animation: "pu 1.5s infinite" }}>🚨 {cN}</div>}
+          {bN > 0 && <div style={{ padding: "2px 6px", borderRadius: 4, background: X.wn + "20", color: X.wn, fontSize: 9, fontWeight: 600 }}>⏰ {bN}</div>}
+          <span style={{ fontSize: 10, color: X.t2 }}>⭐ {Math.floor(sc.pt)}</span>
+        </div>
+      </div>
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: 12 }}>
+          {pg === "dash" && <Dash />}{pg === "tk" && <TkL />}{pg === "dt" && <TkD />}{pg === "admin" && <Adm />}
+        </div>
+        <div style={{ width: 170, borderLeft: "1px solid " + X.pb, background: X.p, overflow: "auto", flexShrink: 0, padding: 8, fontSize: 9 }}>
+          <div style={{ fontWeight: 700, color: X.t3, fontSize: 8, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Activity</div>
+          {lg.length === 0 && <div style={{ color: X.t4 }}>Start resolving!</div>}
+          {lg.slice(0, 18).map((l, i) => <div key={i} style={{ padding: "2px 0", borderBottom: "1px solid " + X.pb + "44" }}><div>{l.m}</div><div style={{ color: X.t4, fontSize: 8 }}>{ago(Date.now() - l.t)}</div></div>)}
+          <div style={{ fontWeight: 700, color: X.t3, fontSize: 8, textTransform: "uppercase", margin: "8px 0 3px" }}>Closed ({cl.length})</div>
+          {cl.slice(0, 6).map(t => <div key={t.id} style={{ color: X.t4, padding: "1px 0" }}>{t.id}</div>)}
+        </div>
+      </div>
+      {ts && <div style={{ position: "fixed", bottom: 14, right: 14, padding: "7px 14px", borderRadius: 5, background: ts.t === "s" ? X.ok : ts.t === "w" ? X.wn : X.a, color: "#fff", fontWeight: 600, fontSize: 11, zIndex: 9999, boxShadow: "0 6px 24px rgba(0,0,0,.5)", animation: "si .3s ease" }}>{ts.m}</div>}
+    </div>
+  );
+}
+
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
